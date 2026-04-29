@@ -21,4 +21,4 @@ Orange dotted line — warning threshold (0.98 pu)
 
 Annotations — max (High Court Load: 0.9953) and min (Pulchowk Campus Load: 0.9750)
 
-A red category for critical voltages (outside ±5%) is defined in the legend in case future runs of your load flow produce values that severe.
+A red category for critical voltages (outside ±5%) is defined in the legend in case future runs of load flow produce values that severe.
