@@ -1,0 +1,312 @@
+The Load Flow converged in 1 iteration !               
+                                                       
+                                                       
+                                                       
+                                                       
+SUMMARY for subnetwork No 1                            
+                                                       
+  Total generation  : P=      0.86 MW Q=      0.32 Mvar
+  Total PQ load     : P=      0.84 MW Q=      0.28 Mvar
+  Total Zshunt load : P=      0.01 MW Q=      0.01 Mvar
+  Total ASM load    : P=      0.00 MW Q=      0.00 Mvar
+  Total losses      : P=      0.00 MW Q=      0.03 Mvar
+                                                       
+                                                       
+1 : BUS_1  V= 1.000 pu/11kV 0.00 deg  ; Swing bus      
+        Generation : P=    0.86 MW Q=    0.32 Mvar     
+        PQ_load    : P=    0.00 MW Q=    0.00 Mvar     
+        Z_shunt    : P=   -0.00 MW Q=   -0.00 Mvar     
+   -->  Bus*30*    : P=    0.86 MW Q=    0.32 Mvar     
+                                                       
+2 : Bus*1*  V= 0.991 pu/0.4kV -31.43 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.07 MW Q=    0.02 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*35*    : P=   -0.07 MW Q=   -0.02 Mvar     
+                                                       
+3 : Bus*10*  V= 0.991 pu/0.23kV -31.45 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*22*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+4 : Bus*11*  V= 0.990 pu/0.23kV -31.47 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*20*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+5 : Bus*13*  V= 0.991 pu/0.23kV -1.25 deg              
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.06 MW Q=    0.02 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*31*    : P=   -0.06 MW Q=   -0.02 Mvar     
+                                                       
+6 : Bus*14*  V= 0.995 pu/0.23kV -30.71 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.01 MW Q=    0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*37*    : P=   -0.01 MW Q=   -0.00 Mvar     
+                                                       
+7 : Bus*15*  V= 0.993 pu/0.23kV -31.16 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.01 MW Q=    0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*18*    : P=   -0.01 MW Q=   -0.00 Mvar     
+                                                       
+8 : Bus*16*  V= 0.977 pu/0.23kV -33.40 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*19*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+9 : Bus*17*  V= 0.986 pu/0.23kV -32.19 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.05 MW Q=    0.02 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*22*    : P=   -0.05 MW Q=   -0.02 Mvar     
+                                                       
+10 : Bus*18*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*15*    : P=    0.01 MW Q=    0.00 Mvar     
+   -->  Bus*37*    : P=   -0.01 MW Q=   -0.00 Mvar     
+                                                       
+11 : Bus*19*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*16*    : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*37*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+12 : Bus*2*  V= 0.993 pu/0.23kV -31.02 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.02 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*23*    : P=   -0.02 MW Q=   -0.01 Mvar     
+                                                       
+13 : Bus*20*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*11*    : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*35*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+14 : Bus*22*  V= 1.000 pu/11kV -0.03 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*10*    : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*17*    : P=    0.05 MW Q=    0.02 Mvar     
+   -->  Bus*30*    : P=   -0.08 MW Q=   -0.03 Mvar     
+                                                       
+15 : Bus*23*  V= 0.999 pu/11kV -0.10 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*2*     : P=    0.02 MW Q=    0.01 Mvar     
+   -->  Bus*26*    : P=    0.57 MW Q=    0.21 Mvar     
+   -->  Bus*43*    : P=   -0.59 MW Q=   -0.22 Mvar     
+                                                       
+16 : Bus*25*  V= 0.999 pu/11kV -0.14 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*26*    : P=   -0.53 MW Q=   -0.20 Mvar     
+   -->  Bus*27*    : P=    0.09 MW Q=    0.03 Mvar     
+   -->  Bus*35*    : P=    0.21 MW Q=    0.08 Mvar     
+   -->  Bus*37*    : P=    0.09 MW Q=    0.03 Mvar     
+   -->  Bus*4*     : P=    0.06 MW Q=    0.02 Mvar     
+   -->  Bus*7*     : P=    0.07 MW Q=    0.03 Mvar     
+                                                       
+17 : Bus*26*  V= 0.999 pu/11kV -0.12 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*23*    : P=   -0.57 MW Q=   -0.21 Mvar     
+   -->  Bus*25*    : P=    0.53 MW Q=    0.20 Mvar     
+   -->  Bus*3*     : P=    0.04 MW Q=    0.02 Mvar     
+                                                       
+18 : Bus*27*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*25*    : P=   -0.09 MW Q=   -0.03 Mvar     
+   -->  Bus*29*    : P=    0.07 MW Q=    0.02 Mvar     
+   -->  Bus*5*     : P=    0.03 MW Q=    0.01 Mvar     
+                                                       
+19 : Bus*28*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*29*    : P=   -0.05 MW Q=   -0.02 Mvar     
+   -->  Bus*8*     : P=    0.05 MW Q=    0.02 Mvar     
+                                                       
+20 : Bus*29*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*27*    : P=   -0.07 MW Q=   -0.02 Mvar     
+   -->  Bus*28*    : P=    0.05 MW Q=    0.02 Mvar     
+   -->  Bus*6*     : P=    0.02 MW Q=    0.01 Mvar     
+                                                       
+21 : Bus*3*  V= 0.975 pu/0.23kV -33.68 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.04 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*26*    : P=   -0.04 MW Q=   -0.01 Mvar     
+                                                       
+22 : Bus*30*  V= 1.000 pu/11kV -0.03 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  BUS_1      : P=   -0.86 MW Q=   -0.32 Mvar     
+   -->  Bus*22*    : P=    0.08 MW Q=    0.03 Mvar     
+   -->  Bus*31*    : P=    0.07 MW Q=    0.02 Mvar     
+   -->  Bus*41*    : P=    0.64 MW Q=    0.24 Mvar     
+   -->  Bus*9*     : P=    0.07 MW Q=    0.03 Mvar     
+                                                       
+23 : Bus*31*  V= 0.999 pu/11kV -0.06 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*13*    : P=    0.06 MW Q=    0.02 Mvar     
+   -->  Bus*30*    : P=   -0.07 MW Q=   -0.02 Mvar     
+                                                       
+24 : Bus*32*  V= 0.990 pu/0.23kV -31.48 deg            
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*33*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+25 : Bus*33*  V= 0.999 pu/11kV -0.16 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  *2*        : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*32*    : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*39*    : P=   -0.06 MW Q=   -0.02 Mvar     
+                                                       
+26 : Bus*34*  V= 0.990 pu/0.23kV -31.47 deg            
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*35*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+27 : Bus*35*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*1*     : P=    0.07 MW Q=    0.02 Mvar     
+   -->  Bus*20*    : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*25*    : P=   -0.21 MW Q=   -0.08 Mvar     
+   -->  Bus*34*    : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*39*    : P=    0.09 MW Q=    0.03 Mvar     
+                                                       
+28 : Bus*36*  V= 0.988 pu/0.23kV -31.76 deg            
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*37*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+29 : Bus*37*  V= 0.999 pu/11kV -0.15 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*14*    : P=    0.01 MW Q=    0.00 Mvar     
+   -->  Bus*18*    : P=    0.01 MW Q=    0.00 Mvar     
+   -->  Bus*19*    : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*25*    : P=   -0.09 MW Q=   -0.03 Mvar     
+   -->  Bus*36*    : P=    0.03 MW Q=    0.01 Mvar     
+                                                       
+30 : Bus*38*  V= 0.990 pu/0.23kV -31.47 deg            
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*39*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+31 : Bus*39*  V= 0.999 pu/11kV -0.16 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*33*    : P=    0.06 MW Q=    0.02 Mvar     
+   -->  Bus*35*    : P=   -0.09 MW Q=   -0.03 Mvar     
+   -->  Bus*38*    : P=    0.03 MW Q=    0.01 Mvar     
+                                                       
+32 : Bus*4*  V= 0.987 pu/0.23kV -31.99 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.06 MW Q=    0.02 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*25*    : P=   -0.06 MW Q=   -0.02 Mvar     
+                                                       
+33 : Bus*40*  V= 0.986 pu/0.23kV -32.07 deg            
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.02 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*41*    : P=   -0.02 MW Q=   -0.01 Mvar     
+                                                       
+34 : Bus*41*  V= 1.000 pu/11kV -0.05 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*30*    : P=   -0.64 MW Q=   -0.24 Mvar     
+   -->  Bus*40*    : P=    0.02 MW Q=    0.01 Mvar     
+   -->  Bus*43*    : P=    0.62 MW Q=    0.23 Mvar     
+                                                       
+35 : Bus*42*  V= 0.994 pu/0.23kV -30.98 deg            
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*43*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+36 : Bus*43*  V= 0.999 pu/11kV -0.07 deg               
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*23*    : P=    0.59 MW Q=    0.22 Mvar     
+   -->  Bus*41*    : P=   -0.62 MW Q=   -0.23 Mvar     
+   -->  Bus*42*    : P=    0.03 MW Q=    0.01 Mvar     
+                                                       
+37 : Bus*5*  V= 0.991 pu/0.23kV -31.33 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*27*    : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+38 : Bus*6*  V= 0.994 pu/0.23kV -30.89 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.02 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*29*    : P=   -0.02 MW Q=   -0.01 Mvar     
+                                                       
+39 : Bus*7*  V= 0.977 pu/0.23kV -33.36 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.07 MW Q=    0.02 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*25*    : P=   -0.07 MW Q=   -0.02 Mvar     
+                                                       
+40 : Bus*8*  V= 0.989 pu/0.23kV -31.74 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.05 MW Q=    0.02 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*28*    : P=   -0.05 MW Q=   -0.02 Mvar     
+                                                       
+41 : Bus*9*  V= 0.986 pu/0.23kV -32.15 deg             
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.07 MW Q=    0.02 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  Bus*30*    : P=   -0.07 MW Q=   -0.02 Mvar     
+                                                       
+42 : *1*  V= 0.990 pu/0.23kV -31.48 deg                
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.03 MW Q=    0.01 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  *2*        : P=   -0.03 MW Q=   -0.01 Mvar     
+                                                       
+43 : *2*  V= 0.999 pu/11kV -0.16 deg                   
+        Generation : P=    0.00 MW Q=    0.00 Mvar     
+        PQ_load    : P=    0.00 MW Q=   -0.00 Mvar     
+        Z_shunt    : P=    0.00 MW Q=    0.00 Mvar     
+   -->  *1*        : P=    0.03 MW Q=    0.01 Mvar     
+   -->  Bus*33*    : P=   -0.03 MW Q=   -0.01 Mvar     
