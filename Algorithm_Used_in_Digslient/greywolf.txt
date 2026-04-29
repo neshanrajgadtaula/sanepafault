@@ -1,0 +1,352 @@
+import random
+import math
+import powerfactory as pf
+
+# ============================================================
+# USER SETTINGS
+# ============================================================
+PV_NAMES = ["PV1", "PV2", "PV3", "PV4", "PV5", "PV6", "PV7", "PV8"]
+MAX_DG_CASE = 8
+
+# Decision variable bounds (MW)
+P_MIN_MW = 0.0
+P_MAX_MW = 1.5
+
+# IMPORTANT: PowerFactory expects setpoint in kW for your PVs
+P_SETPOINT_UNIT = "kW"   # "MW" or "kW"
+
+# Voltage constraints used in objective penalty
+VMIN_PU = 0.95
+VMAX_PU = 1.05
+PENALTY = 1e6
+
+# Grey Wolf Optimizer parameters
+N_WOLVES = 25
+N_ITER = 100
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+def safe_get_attr(obj, key):
+    try:
+        return obj.GetAttribute(key)
+    except Exception:
+        return None
+
+
+def get_app_and_ldf():
+    app = pf.GetApplication()
+    if app is None:
+        raise RuntimeError("Could not get PowerFactory application.")
+    app.ClearOutputWindow()
+    ldf = app.GetFromStudyCase("ComLdf")
+    if not ldf:
+        raise RuntimeError("ComLdf not found in active study case.")
+    return app, ldf
+
+
+def find_by_name(app, class_pattern, loc_name):
+    objs = app.GetCalcRelevantObjects(class_pattern) or []
+    for o in objs:
+        if getattr(o, "loc_name", None) == loc_name:
+            return o
+    return None
+
+
+def find_pv_object(app, name):
+    return (
+        find_by_name(app, "*.ElmPvsys", name) or
+        find_by_name(app, "*.ElmGenstat", name) or
+        find_by_name(app, "*.ElmSym", name) or
+        find_by_name(app, "*.ElmAsy", name)
+    )
+
+
+# ============================================================
+# SETPOINT (unit-safe)  MW -> (MW or kW) written to PF
+# ============================================================
+def set_gen_active_power(app, gen_obj, p_mw):
+    """
+    Input is MW (optimizer).
+    If P_SETPOINT_UNIT='kW', it writes p_mw*1000 to the PF setpoint attribute.
+    """
+    p_mw = float(p_mw)
+    unit = (P_SETPOINT_UNIT or "MW").strip().lower()
+    p_set = p_mw * 1000.0 if unit == "kw" else p_mw
+
+    candidates = ["pgini", "pgen", "Pset", "p_ini", "p_set"]
+    for attr in candidates:
+        try:
+            if hasattr(gen_obj, attr):
+                setattr(gen_obj, attr, p_set)
+                return attr
+        except Exception:
+            pass
+
+    raise RuntimeError("Could not set active power for %s." % getattr(gen_obj, "loc_name", "DG"))
+
+
+# ============================================================
+# VOLTAGES + LOSSES
+# ============================================================
+def get_bus_voltages(app):
+    terms = app.GetCalcRelevantObjects("*.ElmTerm") or []
+    out = []
+    for t in terms:
+        u = safe_get_attr(t, "m:u")
+        if u is not None:
+            out.append(float(u))
+    return out
+
+
+def get_vmin_vmax(app):
+    vs = get_bus_voltages(app)
+    if not vs:
+        return None, None
+    return min(vs), max(vs)
+
+
+def _sum_losses(app, patterns, keys):
+    total = 0.0
+    found = False
+    for pat in patterns:
+        for o in (app.GetCalcRelevantObjects(pat) or []):
+            for k in keys:
+                v = safe_get_attr(o, k)
+                if v is not None:
+                    try:
+                        total += float(v)
+                        found = True
+                        break
+                    except Exception:
+                        pass
+    return total if found else None
+
+
+def get_total_losses_pq(app):
+    res = app.GetFromStudyCase("ElmRes")
+    if res:
+        pl = safe_get_attr(res, "m:ploss")
+        ql = safe_get_attr(res, "m:qloss")
+        if pl is not None and ql is not None:
+            return float(pl), float(ql)
+
+    pl = _sum_losses(app, ["*.ElmLne", "*.ElmTr2", "*.ElmTr3"], ["m:ploss", "m:Ploss", "m:P_loss"])
+    ql = _sum_losses(app, ["*.ElmLne", "*.ElmTr2", "*.ElmTr3"], ["m:qloss", "m:Qloss", "m:Q_loss"])
+    return (0.0 if pl is None else float(pl)), (0.0 if ql is None else float(ql))
+
+
+# ============================================================
+# OBJECTIVE (Voltage deviation + penalty)
+# ============================================================
+def voltage_objective(app):
+    terms = app.GetCalcRelevantObjects("*.ElmTerm") or []
+    v_dev = 0.0
+    viol = 0.0
+    for t in terms:
+        u = safe_get_attr(t, "m:u")
+        if u is None:
+            continue
+
+        v_dev += (u - 1.0) ** 2
+
+        if u < VMIN_PU:
+            viol += (VMIN_PU - u) ** 2
+        elif u > VMAX_PU:
+            viol += (u - VMAX_PU) ** 2
+
+    return v_dev + PENALTY * viol
+
+
+def run_lf(app, ldf):
+    return (ldf.Execute() == 0)
+
+
+# ============================================================
+# GREY WOLF OPTIMIZER FOR k DGs (P only)
+# Stores best-so-far history and prints at END (100 iters)
+# ============================================================
+def gwo_optimize_kdg_with_log(app, ldf, gens):
+    k = len(gens)
+
+    def clip_p(p):
+        return max(P_MIN_MW, min(P_MAX_MW, float(p)))
+
+    def random_x():
+        return [random.uniform(P_MIN_MW, P_MAX_MW) for _ in range(k)]
+
+    def eval_x(x):
+        for i, g in enumerate(gens):
+            set_gen_active_power(app, g, clip_p(x[i]))
+
+        if not run_lf(app, ldf):
+            return 1e12, None, None, None, None
+
+        obj = voltage_objective(app)
+        vmin, vmax = get_vmin_vmax(app)
+        ploss, qloss = get_total_losses_pq(app)
+        return obj, vmin, vmax, ploss, qloss
+
+    # Initialize wolves
+    wolves = [random_x() for _ in range(N_WOLVES)]
+    fitness = []
+    meta = []
+    for w in wolves:
+        obj, vmin, vmax, pl, ql = eval_x(w)
+        fitness.append(obj)
+        meta.append((vmin, vmax, pl, ql))
+
+    # Identify alpha, beta, delta
+    idx_sorted = sorted(range(N_WOLVES), key=lambda i: fitness[i])
+    alpha = wolves[idx_sorted[0]][:]
+    alpha_fit = fitness[idx_sorted[0]]
+    alpha_meta = meta[idx_sorted[0]]
+
+    beta = wolves[idx_sorted[1]][:]
+    beta_fit = fitness[idx_sorted[1]]
+    beta_meta = meta[idx_sorted[1]]
+
+    delta = wolves[idx_sorted[2]][:]
+    delta_fit = fitness[idx_sorted[2]]
+    delta_meta = meta[idx_sorted[2]]
+
+    history = []
+
+    for t in range(N_ITER):
+        a = 2.0 - 2.0 * (float(t) / max(1.0, float(N_ITER - 1)))  # linearly 2 -> 0
+
+        for i in range(N_WOLVES):
+            X = wolves[i][:]
+
+            new_X = [0.0] * k
+            for d in range(k):
+                r1 = random.random()
+                r2 = random.random()
+                A1 = 2.0 * a * r1 - a
+                C1 = 2.0 * r2
+                D_alpha = abs(C1 * alpha[d] - X[d])
+                X1 = alpha[d] - A1 * D_alpha
+
+                r1 = random.random()
+                r2 = random.random()
+                A2 = 2.0 * a * r1 - a
+                C2 = 2.0 * r2
+                D_beta = abs(C2 * beta[d] - X[d])
+                X2 = beta[d] - A2 * D_beta
+
+                r1 = random.random()
+                r2 = random.random()
+                A3 = 2.0 * a * r1 - a
+                C3 = 2.0 * r2
+                D_delta = abs(C3 * delta[d] - X[d])
+                X3 = delta[d] - A3 * D_delta
+
+                new_X[d] = (X1 + X2 + X3) / 3.0
+
+            # bound check
+            for d in range(k):
+                new_X[d] = clip_p(new_X[d])
+
+            wolves[i] = new_X
+
+        # Re-evaluate population and update alpha/beta/delta
+        for i in range(N_WOLVES):
+            obj, vmin, vmax, pl, ql = eval_x(wolves[i])
+            fitness[i] = obj
+            meta[i] = (vmin, vmax, pl, ql)
+
+        idx_sorted = sorted(range(N_WOLVES), key=lambda i: fitness[i])
+
+        alpha = wolves[idx_sorted[0]][:]
+        alpha_fit = fitness[idx_sorted[0]]
+        alpha_meta = meta[idx_sorted[0]]
+
+        beta = wolves[idx_sorted[1]][:]
+        beta_fit = fitness[idx_sorted[1]]
+        beta_meta = meta[idx_sorted[1]]
+
+        delta = wolves[idx_sorted[2]][:]
+        delta_fit = fitness[idx_sorted[2]]
+        delta_meta = meta[idx_sorted[2]]
+
+        # store best-so-far
+        vmin_a, vmax_a, pl_a, ql_a = alpha_meta
+        history.append((t + 1, alpha_fit, alpha[:], vmin_a, vmax_a, pl_a, ql_a))
+
+    best_x = alpha[:]
+    best_obj = alpha_fit
+    return best_x, best_obj, history
+
+
+# ============================================================
+# MAIN
+# ============================================================
+if __name__ == "__main__":
+    app, ldf = get_app_and_ldf()
+
+    pv_objs = []
+    for nm in PV_NAMES[:MAX_DG_CASE]:
+        obj = find_pv_object(app, nm)
+        if not obj:
+            raise RuntimeError("PV/DG '%s' not found." % nm)
+        pv_objs.append(obj)
+
+    # -------------------------
+    # CASE 0: WITHOUT DG
+    # -------------------------
+    for g in pv_objs:
+        set_gen_active_power(app, g, 0.0)
+
+    if not run_lf(app, ldf):
+        raise RuntimeError("Load flow failed for base case (0 DG).")
+
+    vmin0, vmax0 = get_vmin_vmax(app)
+    pl0, ql0 = get_total_losses_pq(app)
+
+    app.PrintPlain("====================================================")
+    app.PrintPlain("CASE 0: WITHOUT DG (all PV1..PV8 = 0)")
+    app.PrintPlain("Voltage Range: Vmin=%.4f pu | Vmax=%.4f pu" % (vmin0, vmax0))
+    app.PrintPlain("Total Loss:    P_loss=%.6f MW | Q_loss=%.6f MVAr" % (pl0, ql0))
+    app.PrintPlain("NOTE: Setpoint unit written to PF is %s (optimizer uses MW)." % P_SETPOINT_UNIT)
+    app.PrintPlain("====================================================")
+
+    # -------------------------
+    # CASE 1..8: WITH k DG using GWO
+    # -------------------------
+    for k in range(1, MAX_DG_CASE + 1):
+        # reset all DG to 0
+        for g in pv_objs:
+            set_gen_active_power(app, g, 0.0)
+
+        active_gens = pv_objs[:k]
+
+        best_x, best_obj, history = gwo_optimize_kdg_with_log(app, ldf, active_gens)
+
+        app.PrintPlain("====================================================")
+        app.PrintPlain("CASE %d: WITH %d DG ACTIVE  (GWO iters = %d)" % (k, k, N_ITER))
+        header = "Iter | BestObj | " + " | ".join(["%s(MW)" % g.loc_name for g in active_gens]) + " | Vmin | Vmax | Ploss(MW) | Qloss(MVAr)"
+        app.PrintPlain("Format:")
+        app.PrintPlain(header)
+        app.PrintPlain("----------------------------------------------------")
+
+        for it, objv, xlist, vmin, vmax, pl, ql in history:
+            row = "%03d | %.6f" % (it, objv)
+            for val in xlist:
+                row += " | %.4f" % val
+
+            vmin_s = "-" if vmin is None else "%.4f" % vmin
+            vmax_s = "-" if vmax is None else "%.4f" % vmax
+            pl_s = "-" if pl is None else "%.6f" % pl
+            ql_s = "-" if ql is None else "%.6f" % ql
+
+            row += " | %s | %s | %s | %s" % (vmin_s, vmax_s, pl_s, ql_s)
+            app.PrintPlain(row)
+
+        app.PrintPlain("----------------------------------------------------")
+        app.PrintPlain("FINAL BEST (Case %d): Obj=%.6f" % (k, best_obj))
+        for i, g in enumerate(active_gens):
+            app.PrintPlain("  %s: %.4f MW  (written as %.1f kW)" % (g.loc_name, best_x[i], best_x[i] * 1000.0))
+        app.PrintPlain("====================================================")
+
+    app.PrintInfo("All cases finished.")

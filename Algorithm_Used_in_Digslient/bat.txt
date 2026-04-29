@@ -1,0 +1,334 @@
+import random
+import math
+import powerfactory as pf
+
+# ============================================================
+# USER SETTINGS (EDIT THESE)
+# ============================================================
+PV1_OBJ_NAME = "PV1"
+PV2_OBJ_NAME = "PV2"
+PV3_OBJ_NAME = "PV3"
+PV4_OBJ_NAME = "PV4"
+PV5_OBJ_NAME = "PV5"
+
+P1_MIN_MW, P1_MAX_MW = 0.0, 3.0
+P2_MIN_MW, P2_MAX_MW = 0.0, 3.0
+P3_MIN_MW, P3_MAX_MW = 0.0, 3.0
+P4_MIN_MW, P4_MAX_MW = 0.0, 3.0
+P5_MIN_MW, P5_MAX_MW = 0.0, 3.0
+
+VMIN_PU = 0.95
+VMAX_PU = 1.05
+PENALTY = 1e6
+
+OPTIMIZE_BUS = False
+CANDIDATE_BUS_NAMES = []  # optional; if empty and OPTIMIZE_BUS=True -> all terminals are candidates
+
+N_BATS = 20
+N_ITER = 50
+FMIN = 0.0
+FMAX = 2.0
+A0 = 1.0
+R0 = 0.2
+ALPHA = 0.9
+GAMMA = 0.9
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+def safe_get_attr(obj, key):
+    try:
+        return obj.GetAttribute(key)
+    except Exception:
+        return None
+
+
+def get_app_and_ldf():
+    app = pf.GetApplication()
+    if app is None:
+        raise RuntimeError("Could not get PowerFactory application.")
+    app.ClearOutputWindow()
+
+    ldf = app.GetFromStudyCase("ComLdf")
+    if not ldf:
+        raise RuntimeError("ComLdf not found in active study case.")
+    return app, ldf
+
+
+def find_by_name(app, class_pattern, loc_name):
+    objs = app.GetCalcRelevantObjects(class_pattern)
+    for o in objs:
+        if getattr(o, "loc_name", None) == loc_name:
+            return o
+    return None
+
+
+# ============================================================
+# PV SET / CONNECT (robust)
+# ============================================================
+def set_pv_active_power_mw(app, pv_obj, p_mw):
+    p_mw = float(p_mw)
+    candidates = ["pgini", "pgen", "Pset", "p_ini", "p_set"]
+    for attr in candidates:
+        try:
+            if hasattr(pv_obj, attr):
+                setattr(pv_obj, attr, p_mw)
+                return attr
+        except Exception:
+            pass
+    app.PrintPlain("ERROR: Could not set PV active power. Check PV MW setpoint attribute (often 'pgini').")
+    raise RuntimeError("PV setpoint attribute not found.")
+
+
+def connect_pv_to_terminal(app, pv_obj, term_obj):
+    candidates = ["bus1", "term", "terminal", "pbus"]
+    for attr in candidates:
+        try:
+            if hasattr(pv_obj, attr):
+                setattr(pv_obj, attr, term_obj)
+                return attr
+        except Exception:
+            pass
+    app.PrintPlain("ERROR: Could not connect PV to terminal. Check PV terminal attribute (often 'bus1').")
+    raise RuntimeError("PV terminal attribute not found.")
+
+
+# ============================================================
+# OBJECTIVE (Voltage deviation + penalty)
+# ============================================================
+def voltage_objective(app, vmin_pu, vmax_pu, penalty):
+    terms = app.GetCalcRelevantObjects("*.ElmTerm")
+    v_dev = 0.0
+    viol = 0.0
+
+    for t in terms:
+        u = safe_get_attr(t, "m:u")  # pu voltage
+        if u is None:
+            continue
+
+        v_dev += (u - 1.0) ** 2
+
+        if u < vmin_pu:
+            viol += (vmin_pu - u) ** 2
+        elif u > vmax_pu:
+            viol += (u - vmax_pu) ** 2
+
+    return v_dev + penalty * viol
+
+
+def run_load_flow_and_get_objective(app, ldf):
+    err = ldf.Execute()
+    if err != 0:
+        return 1e9
+    return voltage_objective(app, VMIN_PU, VMAX_PU, PENALTY)
+
+
+# ============================================================
+# BAT ALGORITHM FOR 5 PVs
+#   - If OPTIMIZE_BUS = False: [P1, P2, P3, P4, P5]
+#   - If OPTIMIZE_BUS = True : [P1..P5, bus1..bus5]
+# ============================================================
+def bat_optimize_five_pv(app, ldf, pv1, pv2, pv3, pv4, pv5, candidate_terms=None):
+    dim = 10 if candidate_terms else 5
+
+    def clip_p(val, pmin, pmax):
+        return max(pmin, min(pmax, float(val)))
+
+    def clip_bus(x):
+        if not candidate_terms:
+            return x
+        return max(0.0, min(float(len(candidate_terms) - 1), float(x)))
+
+    def random_x():
+        if dim == 5:
+            return [
+                random.uniform(P1_MIN_MW, P1_MAX_MW),
+                random.uniform(P2_MIN_MW, P2_MAX_MW),
+                random.uniform(P3_MIN_MW, P3_MAX_MW),
+                random.uniform(P4_MIN_MW, P4_MAX_MW),
+                random.uniform(P5_MIN_MW, P5_MAX_MW),
+            ]
+        return [
+            random.uniform(P1_MIN_MW, P1_MAX_MW),
+            random.uniform(P2_MIN_MW, P2_MAX_MW),
+            random.uniform(P3_MIN_MW, P3_MAX_MW),
+            random.uniform(P4_MIN_MW, P4_MAX_MW),
+            random.uniform(P5_MIN_MW, P5_MAX_MW),
+            random.uniform(0, len(candidate_terms) - 1),
+            random.uniform(0, len(candidate_terms) - 1),
+            random.uniform(0, len(candidate_terms) - 1),
+            random.uniform(0, len(candidate_terms) - 1),
+            random.uniform(0, len(candidate_terms) - 1),
+        ]
+
+    def eval_x(x):
+        p1 = clip_p(x[0], P1_MIN_MW, P1_MAX_MW)
+        p2 = clip_p(x[1], P2_MIN_MW, P2_MAX_MW)
+        p3 = clip_p(x[2], P3_MIN_MW, P3_MAX_MW)
+        p4 = clip_p(x[3], P4_MIN_MW, P4_MAX_MW)
+        p5 = clip_p(x[4], P5_MIN_MW, P5_MAX_MW)
+
+        set_pv_active_power_mw(app, pv1, p1)
+        set_pv_active_power_mw(app, pv2, p2)
+        set_pv_active_power_mw(app, pv3, p3)
+        set_pv_active_power_mw(app, pv4, p4)
+        set_pv_active_power_mw(app, pv5, p5)
+
+        if dim == 10:
+            i1 = int(round(clip_bus(x[5])))
+            i2 = int(round(clip_bus(x[6])))
+            i3 = int(round(clip_bus(x[7])))
+            i4 = int(round(clip_bus(x[8])))
+            i5 = int(round(clip_bus(x[9])))
+            connect_pv_to_terminal(app, pv1, candidate_terms[i1])
+            connect_pv_to_terminal(app, pv2, candidate_terms[i2])
+            connect_pv_to_terminal(app, pv3, candidate_terms[i3])
+            connect_pv_to_terminal(app, pv4, candidate_terms[i4])
+            connect_pv_to_terminal(app, pv5, candidate_terms[i5])
+
+        return run_load_flow_and_get_objective(app, ldf)
+
+    bats = [random_x() for _ in range(N_BATS)]
+    vels = [[0.0] * dim for _ in range(N_BATS)]
+    freqs = [0.0] * N_BATS
+    loud = [A0] * N_BATS
+    pulse = [R0] * N_BATS
+
+    history = []  # (iter, best_f, p1..p5, b1..b5)
+
+    best_x = bats[0][:]
+    best_f = eval_x(best_x)
+
+    for i in range(1, N_BATS):
+        fi = eval_x(bats[i])
+        if fi < best_f:
+            best_f = fi
+            best_x = bats[i][:]
+
+    for t in range(N_ITER):
+        for i in range(N_BATS):
+            freqs[i] = FMIN + (FMAX - FMIN) * random.random()
+
+            for d in range(dim):
+                vels[i][d] = vels[i][d] + (bats[i][d] - best_x[d]) * freqs[i]
+                bats[i][d] = bats[i][d] + vels[i][d]
+
+            bats[i][0] = clip_p(bats[i][0], P1_MIN_MW, P1_MAX_MW)
+            bats[i][1] = clip_p(bats[i][1], P2_MIN_MW, P2_MAX_MW)
+            bats[i][2] = clip_p(bats[i][2], P3_MIN_MW, P3_MAX_MW)
+            bats[i][3] = clip_p(bats[i][3], P4_MIN_MW, P4_MAX_MW)
+            bats[i][4] = clip_p(bats[i][4], P5_MIN_MW, P5_MAX_MW)
+            if dim == 10:
+                bats[i][5] = clip_bus(bats[i][5])
+                bats[i][6] = clip_bus(bats[i][6])
+                bats[i][7] = clip_bus(bats[i][7])
+                bats[i][8] = clip_bus(bats[i][8])
+                bats[i][9] = clip_bus(bats[i][9])
+
+            if random.random() > pulse[i]:
+                new_x = best_x[:]
+                new_x[0] = clip_p(new_x[0] + 0.1 * (random.random() - 0.5), P1_MIN_MW, P1_MAX_MW)
+                new_x[1] = clip_p(new_x[1] + 0.1 * (random.random() - 0.5), P2_MIN_MW, P2_MAX_MW)
+                new_x[2] = clip_p(new_x[2] + 0.1 * (random.random() - 0.5), P3_MIN_MW, P3_MAX_MW)
+                new_x[3] = clip_p(new_x[3] + 0.1 * (random.random() - 0.5), P4_MIN_MW, P4_MAX_MW)
+                new_x[4] = clip_p(new_x[4] + 0.1 * (random.random() - 0.5), P5_MIN_MW, P5_MAX_MW)
+                if dim == 10:
+                    new_x[5] = clip_bus(new_x[5] + 0.5 * (random.random() - 0.5))
+                    new_x[6] = clip_bus(new_x[6] + 0.5 * (random.random() - 0.5))
+                    new_x[7] = clip_bus(new_x[7] + 0.5 * (random.random() - 0.5))
+                    new_x[8] = clip_bus(new_x[8] + 0.5 * (random.random() - 0.5))
+                    new_x[9] = clip_bus(new_x[9] + 0.5 * (random.random() - 0.5))
+            else:
+                new_x = bats[i][:]
+
+            f_new = eval_x(new_x)
+
+            if (f_new <= best_f) and (random.random() < loud[i]):
+                bats[i] = new_x[:]
+                loud[i] *= ALPHA
+                pulse[i] = R0 * (1.0 - math.exp(-GAMMA * t))
+
+            if f_new < best_f:
+                best_f = f_new
+                best_x = new_x[:]
+
+        b1 = b2 = b3 = b4 = b5 = None
+        if candidate_terms:
+            i1 = int(round(best_x[5])); i2 = int(round(best_x[6]))
+            i3 = int(round(best_x[7])); i4 = int(round(best_x[8]))
+            i5 = int(round(best_x[9]))
+            i1 = max(0, min(len(candidate_terms) - 1, i1))
+            i2 = max(0, min(len(candidate_terms) - 1, i2))
+            i3 = max(0, min(len(candidate_terms) - 1, i3))
+            i4 = max(0, min(len(candidate_terms) - 1, i4))
+            i5 = max(0, min(len(candidate_terms) - 1, i5))
+            b1 = candidate_terms[i1].loc_name
+            b2 = candidate_terms[i2].loc_name
+            b3 = candidate_terms[i3].loc_name
+            b4 = candidate_terms[i4].loc_name
+            b5 = candidate_terms[i5].loc_name
+
+        history.append((t + 1, best_f, best_x[0], best_x[1], best_x[2], best_x[3], best_x[4], b1, b2, b3, b4, b5))
+
+    return best_x, best_f, history
+
+
+# ============================================================
+# MAIN
+# ============================================================
+if __name__ == "__main__":
+    app, ldf = get_app_and_ldf()
+
+    pv1 = (find_by_name(app, "*.ElmGenstat", PV1_OBJ_NAME) or find_by_name(app, "*.ElmPvsys", PV1_OBJ_NAME))
+    pv2 = (find_by_name(app, "*.ElmGenstat", PV2_OBJ_NAME) or find_by_name(app, "*.ElmPvsys", PV2_OBJ_NAME))
+    pv3 = (find_by_name(app, "*.ElmGenstat", PV3_OBJ_NAME) or find_by_name(app, "*.ElmPvsys", PV3_OBJ_NAME))
+    pv4 = (find_by_name(app, "*.ElmGenstat", PV4_OBJ_NAME) or find_by_name(app, "*.ElmPvsys", PV4_OBJ_NAME))
+    pv5 = (find_by_name(app, "*.ElmGenstat", PV5_OBJ_NAME) or find_by_name(app, "*.ElmPvsys", PV5_OBJ_NAME))
+
+    if not pv1: raise RuntimeError(f"PV object '{PV1_OBJ_NAME}' not found (ElmGenstat/ElmPvsys).")
+    if not pv2: raise RuntimeError(f"PV object '{PV2_OBJ_NAME}' not found (ElmGenstat/ElmPvsys).")
+    if not pv3: raise RuntimeError(f"PV object '{PV3_OBJ_NAME}' not found (ElmGenstat/ElmPvsys).")
+    if not pv4: raise RuntimeError(f"PV object '{PV4_OBJ_NAME}' not found (ElmGenstat/ElmPvsys).")
+    if not pv5: raise RuntimeError(f"PV object '{PV5_OBJ_NAME}' not found (ElmGenstat/ElmPvsys).")
+
+    candidate_terms = None
+    if OPTIMIZE_BUS:
+        all_terms = app.GetCalcRelevantObjects("*.ElmTerm")
+        if CANDIDATE_BUS_NAMES:
+            name_to_term = {t.loc_name: t for t in all_terms}
+            candidate_terms = [name_to_term[n] for n in CANDIDATE_BUS_NAMES if n in name_to_term]
+            if not candidate_terms:
+                raise RuntimeError("No candidate buses found by the given names.")
+        else:
+            candidate_terms = all_terms
+
+    best_x, best_f, history = bat_optimize_five_pv(app, ldf, pv1, pv2, pv3, pv4, pv5, candidate_terms=candidate_terms)
+
+    app.PrintPlain("====================================================")
+    app.PrintPlain("Bat Algorithm Iteration Summary (5 PVs, printed at end)")
+    app.PrintPlain("Format: Iter | BestObj | PV1 | PV2 | PV3 | PV4 | PV5 | Bus1 | Bus2 | Bus3 | Bus4 | Bus5")
+    app.PrintPlain("----------------------------------------------------")
+
+    for it, fval, p1, p2, p3, p4, p5, b1, b2, b3, b4, b5 in history:
+        if b1 is None:
+            app.PrintPlain(f"{it:03d} | {fval:.6f} | {p1:.4f} | {p2:.4f} | {p3:.4f} | {p4:.4f} | {p5:.4f} | - | - | - | - | -")
+        else:
+            app.PrintPlain(f"{it:03d} | {fval:.6f} | {p1:.4f} | {p2:.4f} | {p3:.4f} | {p4:.4f} | {p5:.4f} | {b1} | {b2} | {b3} | {b4} | {b5}")
+
+    app.PrintPlain("====================================================")
+    app.PrintInfo(
+        f"FINAL BEST: PV1={best_x[0]:.4f} MW | PV2={best_x[1]:.4f} MW | PV3={best_x[2]:.4f} MW | "
+        f"PV4={best_x[3]:.4f} MW | PV5={best_x[4]:.4f} MW | objective={best_f:.6f}"
+    )
+
+    if candidate_terms:
+        idxs = [int(round(best_x[i])) for i in range(5, 10)]
+        idxs = [max(0, min(len(candidate_terms) - 1, k)) for k in idxs]
+        app.PrintInfo(f"FINAL BEST BUS1: {candidate_terms[idxs[0]].loc_name}")
+        app.PrintInfo(f"FINAL BEST BUS2: {candidate_terms[idxs[1]].loc_name}")
+        app.PrintInfo(f"FINAL BEST BUS3: {candidate_terms[idxs[2]].loc_name}")
+        app.PrintInfo(f"FINAL BEST BUS4: {candidate_terms[idxs[3]].loc_name}")
+        app.PrintInfo(f"FINAL BEST BUS5: {candidate_terms[idxs[4]].loc_name}")
+
+    app.PrintInfo("Done.")
