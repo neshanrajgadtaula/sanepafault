@@ -1,1 +1,2 @@
 Santosh/*.xlsx filter=lfs diff=lfs merge=lfs -text
+Santosh/*.csv filter=lfs diff=lfs merge=lfs -text
