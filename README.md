@@ -114,3 +114,11 @@ vc, D1_vc, D2_vc, D3_vc, D4_vc
 The dataset is stored at:
 
 /Santosh/dataset.xlsx
+## Phase Selection
+Energy: Which phase has more energy
+Example: [1-0-0-1] fault : Red phase contains more energy than others.
+Ground involment is determined by zero sequence.
+
+Energy formula from paper
+
+Downgrade: 18a
