@@ -239,3 +239,9 @@ The final column is:
 ## Summary
 
 The Simulink model runs for 12 seconds. The first second is used for no-fault data, and each fault condition is applied for 1 second. Current, voltage, zero-sequence, positive-sequence, and negative-sequence signals are stored from Simulink. DWT energy features are extracted in MATLAB and saved as an Excel dataset for machine learning fault classification.
+
+
+## May 13
+* Added the data_analysis.ipynb notebook for understanding the data
+* data_info.md contains the information about each of the column used
+* Need to refine data_analysis.ipynb for more detailed analysis and use-case focused
