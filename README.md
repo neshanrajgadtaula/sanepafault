@@ -122,3 +122,7 @@ Ground involment is determined by zero sequence.
 Energy formula from paper
 
 Downgrade: 18a
+
+## 19 May
+* Added model definitions 
+* Added logic to merge the dataset to form one combined dataset
