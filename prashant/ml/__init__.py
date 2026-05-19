@@ -11,6 +11,7 @@ cross_validate, save, load, get_params, set_params.
 from ml.base_model import BaseModel
 from ml.data_pipeline import DataPipeline
 from ml.evaluator import Evaluator
+from ml.plots import EDAPlots, EvaluationPlots, FeaturePlots, TuningPlots, make_graph_dirs
 
 from ml.AdaBoost import AdaBoostModel
 from ml.DecisionTree import DecisionTreeModel

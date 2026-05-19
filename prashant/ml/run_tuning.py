@@ -74,6 +74,38 @@ def _build_registry() -> dict:
     return registry
 
 
+# ── Plotting helpers ──────────────────────────────────────────────────────── #
+
+def _eda_graphs(data_path, pipeline, graph_dirs: dict) -> None:
+    from ml.plots import EDAPlots
+    feat = pipeline.get_feature_names()
+    print("\n[graphs] Generating EDA plots …")
+    EDAPlots.class_distribution(data_path, feat, graph_dirs["eda"])
+    EDAPlots.wavelet_energy_heatmap(data_path, feat, graph_dirs["eda"])
+    EDAPlots.feature_correlation_heatmap(data_path, feat, graph_dirs["eda"])
+
+
+def _model_graphs(name, model, study, y_test, X_test, label_names,
+                  feature_names: list, graph_dirs: dict) -> None:
+    from ml.plots import EvaluationPlots, FeaturePlots, TuningPlots
+
+    y_pred  = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)
+
+    EvaluationPlots.confusion_matrix(y_test, y_pred, label_names, name,
+                                     graph_dirs["evaluation"])
+    EvaluationPlots.roc_curves(y_test, y_proba, label_names, name,
+                               graph_dirs["evaluation"])
+    EvaluationPlots.precision_recall_curves(y_test, y_proba, label_names, name,
+                                            graph_dirs["evaluation"])
+    TuningPlots.optimization_history(study, name, graph_dirs["tuning"])
+    TuningPlots.param_importance(study, name, graph_dirs["tuning"])
+    FeaturePlots.feature_importance(model, feature_names, name,
+                                    graph_dirs["features"])
+    FeaturePlots.shap_summary(model, X_test, feature_names, name,
+                              graph_dirs["features"])
+
+
 # ── Main orchestrator ─────────────────────────────────────────────────────── #
 
 def run_tuning(
@@ -86,6 +118,8 @@ def run_tuning(
     val_size: float = 0.2,
     test_size: float = 0.2,
     random_state: int = 42,
+    save_graphs: bool = True,
+    graphs_dir: Optional[str | Path] = None,
     verbose: bool = True,
 ) -> pd.DataFrame:
     """Tune every registered model and return a comparison DataFrame.
@@ -100,6 +134,8 @@ def run_tuning(
     columns_to_drop : Feature columns to exclude (missing ones ignored).
     log_transform   : Apply log1p to energy features.
     val_size / test_size / random_state : Passed to DataPipeline.
+    save_graphs : Generate and save all IEEE-ready graphs (default True).
+    graphs_dir  : Root directory for graphs. Defaults to ``<ml_pkg>/graphs/``.
     verbose     : Print per-model progress to stdout.
 
     Returns
@@ -112,6 +148,9 @@ def run_tuning(
         save_dir = Path(__file__).parent / "saved_models"
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
+
+    if graphs_dir is None:
+        graphs_dir = Path(__file__).parent / "graphs"
 
     # ── Data ────────────────────────────────────────────────────────────── #
     pipeline = DataPipeline(
@@ -128,6 +167,13 @@ def run_tuning(
 
     pipeline.save(save_dir / "pipeline_tuned.joblib")
 
+    # ── EDA graphs (once) ──────────────────────────────────────────────── #
+    if save_graphs:
+        from ml.plots import make_graph_dirs
+        graph_dirs_map = make_graph_dirs(graphs_dir)
+        _eda_graphs(data_path, pipeline, graph_dirs_map)
+        print()
+
     if verbose:
         print(f"Dataset   : {Path(data_path).name}")
         print(f"Features  : {len(pipeline.get_feature_names())}")
@@ -141,44 +187,48 @@ def run_tuning(
         )
         print("-" * 80)
 
-    registry = _build_registry()
-    rows = []
+    registry      = _build_registry()
+    feature_names = pipeline.get_feature_names()
+    rows          = []
 
     for name, ModelCls in registry.items():
-        row: dict = {"Model": name}
+        row: dict   = {"Model": name}
+        model       = None
+        tune_result = None
+
+        # ── tune + train (isolated from graph code) ─────────────────────── #
         try:
             model = ModelCls()
 
-            # ── 1. Bayesian search on train → scored on val ────────────── #
-            t_tune = time.perf_counter()
+            # 1. Bayesian search: train → val
+            t_tune      = time.perf_counter()
             tune_result = model.tune(
                 X_train, y_train, X_val, y_val,
-                n_trials=n_trials,
-                timeout=timeout,
+                n_trials=n_trials, timeout=timeout,
             )
-            tune_time = time.perf_counter() - t_tune
+            tune_time   = time.perf_counter() - t_tune
 
-            # ── 2. Retrain with best params on train + val combined ─────── #
-            t_train = time.perf_counter()
+            # 2. Retrain with best params on train + val combined
+            t_train    = time.perf_counter()
             model.train(X_trainval, y_trainval)
             train_time = time.perf_counter() - t_train
 
-            # ── 3. Evaluate on held-out test set ────────────────────────── #
+            # 3. Evaluate on held-out test set
             metrics = model.evaluate(X_test, y_test)
 
             model.save(save_dir / f"{name}_tuned.joblib")
 
             row.update({
-                "Best-Val-F1": round(tune_result["best_val_f1"], 4),
-                "Test-Accuracy": round(metrics["accuracy"], 4),
-                "Test-Macro-F1": round(metrics["macro_f1"], 4),
-                "Test-Weighted-F1": round(metrics["weighted_f1"], 4),
-                "Test-Macro-Precision": round(metrics["macro_precision"], 4),
-                "Test-Macro-Recall": round(metrics["macro_recall"], 4),
-                "Tune-Time(s)": round(tune_time, 2),
-                "Train-Time(s)": round(train_time, 3),
-                "Best-Params": tune_result["best_params"],
-                "Status": "OK",
+                "Best-Val-F1":          round(tune_result["best_val_f1"],    4),
+                "Test-Accuracy":        round(metrics["accuracy"],            4),
+                "Test-Macro-F1":        round(metrics["macro_f1"],            4),
+                "Test-Weighted-F1":     round(metrics["weighted_f1"],         4),
+                "Test-Macro-Precision": round(metrics["macro_precision"],     4),
+                "Test-Macro-Recall":    round(metrics["macro_recall"],        4),
+                "Tune-Time(s)":         round(tune_time,                      2),
+                "Train-Time(s)":        round(train_time,                     3),
+                "Best-Params":          tune_result["best_params"],
+                "Status":               "OK",
             })
 
             if verbose:
@@ -203,7 +253,21 @@ def run_tuning(
 
         rows.append(row)
 
+        # ── per-model graphs (separate try — failures don't affect results) #
+        if save_graphs and model is not None and row["Status"] == "OK":
+            try:
+                _model_graphs(name, model, tune_result["study"],
+                              y_test, X_test, label_names,
+                              feature_names, graph_dirs_map)
+            except Exception as ge:
+                warnings.warn(f"[graphs] {name}: {ge}")
+
     results = pd.DataFrame(rows).set_index("Model")
+
+    # ── model comparison graph (needs all rows) ────────────────────────── #
+    if save_graphs:
+        from ml.plots import EvaluationPlots
+        EvaluationPlots.model_comparison(results, graph_dirs_map["evaluation"])
 
     # Save summary CSV (without the study objects)
     csv_cols = [c for c in results.columns if c != "Best-Params"]
@@ -216,13 +280,15 @@ def run_tuning(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bayesian hyperparameter tuning for all models.")
-    parser.add_argument("--data", required=True, help="Path to Combined_Dataset.xlsx")
-    parser.add_argument("--n-trials", type=int, default=50, help="Optuna trials per model")
-    parser.add_argument("--timeout", type=int, default=None, help="Per-model timeout in seconds")
-    parser.add_argument("--save-dir", default=None, help="Directory for tuned .joblib files")
-    parser.add_argument("--val-size", type=float, default=0.2)
-    parser.add_argument("--test-size", type=float, default=0.2)
-    parser.add_argument("--no-log", action="store_true", help="Disable log1p transform")
+    parser.add_argument("--data",       required=True,          help="Path to Combined_Dataset.xlsx")
+    parser.add_argument("--n-trials",   type=int, default=50,   help="Optuna trials per model")
+    parser.add_argument("--timeout",    type=int, default=None,  help="Per-model timeout in seconds")
+    parser.add_argument("--save-dir",   default=None,            help="Directory for tuned .joblib files")
+    parser.add_argument("--graphs-dir", default=None,            help="Root directory for graphs")
+    parser.add_argument("--val-size",   type=float, default=0.2)
+    parser.add_argument("--test-size",  type=float, default=0.2)
+    parser.add_argument("--no-graphs",  action="store_true",     help="Skip graph generation")
+    parser.add_argument("--no-log",     action="store_true",     help="Disable log1p transform")
     args = parser.parse_args()
 
     df = run_tuning(
@@ -230,8 +296,10 @@ if __name__ == "__main__":
         n_trials=args.n_trials,
         timeout=args.timeout,
         save_dir=args.save_dir,
+        graphs_dir=args.graphs_dir,
         val_size=args.val_size,
         test_size=args.test_size,
+        save_graphs=not args.no_graphs,
         log_transform=not args.no_log,
     )
     print("\n── Tuning Summary ──")
