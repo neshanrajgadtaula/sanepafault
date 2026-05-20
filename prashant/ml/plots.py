@@ -472,43 +472,66 @@ class FeaturePlots:
         save_dir: Union[str, Path],
         max_samples: int = 300,
     ) -> None:
-        """SHAP mean-|value| bar chart for tree-based models (11_...)."""
+        """SHAP mean-|value| bar chart for all model types (11_...).
+
+        Explainer selection:
+          - Tree models (feature_importances_): TreeExplainer — fast, exact.
+          - Linear models (coef_): LinearExplainer — fast, faithful.
+          - Black-box (SVM, KNN, MLP, NaiveBayes): KernelExplainer — sampled.
+        """
         try:
             import shap
         except ImportError:
             warnings.warn("shap not installed — skipping. pip install shap")
             return
 
-        est    = model.model
-        scaler = None
-        if hasattr(est, "named_steps"):
-            scaler = est.named_steps.get("scaler")
-            est    = est.named_steps["clf"]
-
-        if not hasattr(est, "feature_importances_"):
-            warnings.warn(
-                f"{model_name}: SHAP TreeExplainer requires a tree-based model — skipping."
-            )
-            return
+        # Unwrap sklearn Pipeline to inspect the inner estimator
+        raw_pipeline = model.model
+        scaler       = None
+        if hasattr(raw_pipeline, "named_steps"):
+            scaler    = raw_pipeline.named_steps.get("scaler")
+            est_inner = raw_pipeline.named_steps["clf"]
+        else:
+            est_inner = raw_pipeline
 
         X_samp = X[:max_samples]
-        if scaler is not None:
-            X_samp = scaler.transform(X_samp)
 
         try:
-            explainer  = shap.TreeExplainer(est)
-            shap_vals  = explainer.shap_values(X_samp)
+            if hasattr(est_inner, "feature_importances_"):
+                # ── Tree-based: TreeExplainer ─────────────────────────── #
+                X_input   = scaler.transform(X_samp) if scaler is not None else X_samp
+                explainer = shap.TreeExplainer(est_inner)
+                shap_vals = explainer.shap_values(X_input)
+                X_plot    = X_input
 
-            # Multi-class: shap_vals is a list of (n_samples, n_features) arrays
-            # Average absolute SHAP across classes
+            elif hasattr(est_inner, "coef_"):
+                # ── Linear (LogisticRegression): LinearExplainer ──────── #
+                X_scaled  = scaler.transform(X_samp) if scaler is not None else X_samp
+                explainer = shap.LinearExplainer(est_inner, X_scaled)
+                shap_vals = explainer.shap_values(X_scaled)
+                X_plot    = X_scaled
+
+            else:
+                # ── Black-box (SVM/KNN/MLP/NaiveBayes): KernelExplainer ─ #
+                # Pass the full pipeline so scaling is handled internally.
+                n_bg       = min(30, len(X_samp))
+                background = shap.sample(X_samp, n_bg)
+                explainer  = shap.KernelExplainer(raw_pipeline.predict_proba, background)
+                n_explain  = min(50, len(X_samp))
+                shap_vals  = explainer.shap_values(X_samp[:n_explain], silent=True)
+                X_plot     = X_samp[:n_explain]
+
+            # ── Aggregate multi-class → mean |SHAP| (n_samples, n_feat) ─ #
             if isinstance(shap_vals, list):
                 sv = np.mean(np.abs(np.array(shap_vals)), axis=0)
+            elif isinstance(shap_vals, np.ndarray) and shap_vals.ndim == 3:
+                sv = np.mean(np.abs(shap_vals), axis=2)
             else:
-                sv = shap_vals
+                sv = np.abs(shap_vals)
 
             with _ctx():
                 shap.summary_plot(
-                    sv, X_samp,
+                    sv, X_plot,
                     feature_names=feature_names,
                     plot_type="bar",
                     show=False,
